@@ -76,16 +76,24 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 def get_calendar_service():
     """Google Calendarサービスの初期化"""
     try:
-        # サービスアカウントキーのパスを確認
-        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        if credentials_path and os.path.exists(credentials_path):
-            credentials = Credentials.from_service_account_file(
-                credentials_path, scopes=SCOPES
+        # Streamlit Secretsから認証情報を取得
+        if "GOOGLE_APPLICATION_CREDENTIALS" in st.secrets:
+            credentials_info = st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]
+            # 文字列の場合はJSONにパース
+            if isinstance(credentials_info, str):
+                credentials_info = json.loads(credentials_info)
+            
+            credentials = Credentials.from_service_account_info(
+                credentials_info, scopes=SCOPES
             )
             return build('calendar', 'v3', credentials=credentials)
+        else:
+            st.warning("⚠️ Google Calendar認証情報が設定されていません")
+            st.info("セットアップ手順: Streamlit Cloud の Secrets に GOOGLE_APPLICATION_CREDENTIALS を設定してください")
+            return None
     except Exception as e:
         st.warning(f"⚠️ Google Calendar連携の初期化に失敗しました: {str(e)}")
-        st.info("セットアップ手順: 環境変数 `GOOGLE_APPLICATION_CREDENTIALS` に認証JSONファイルのパスを設定してください")
+        st.info("セットアップ手順: Secrets に正しいJSON形式の認証情報を設定してください")
         return None
 
 def get_available_slots(service, days_ahead=14, duration_minutes=30, buffer_minutes=15):
